@@ -8,7 +8,6 @@ import { JoiVaildationSchema } from './config/joi.validation';
 import { AuthModule } from './auth/auth.module';
 import { CoreModule } from './core/core.module';
 import { PruebaModule } from './prueba/prueba.module';
-import { ErrorModule } from './error/error.module';
 
 @Module({
   imports: [
@@ -20,7 +19,6 @@ import { ErrorModule } from './error/error.module';
       validationSchema: JoiVaildationSchema,
     }),
     MongooseModule.forRoot(`${process.env.MONGO_DB}`),
-    ErrorModule,
     CoreModule,
     CommonModule,
     AuthModule,

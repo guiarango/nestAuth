@@ -4,3 +4,8 @@ export interface JsonResponse<T> {
   ok: boolean;
   statusCode: number;
 }
+
+export interface ResponseInfo<T> {
+  data: T | null;
+  ok: boolean;
+}

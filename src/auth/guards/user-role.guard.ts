@@ -1,15 +1,16 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
-import { ErrorHandler } from '../../error/classes/errorHandler';
 import { META_ROLES } from '../decorators/role-protected.decorator';
 
 @Injectable()
 export class UserRoleGuard implements CanActivate {
-  constructor(
-    private readonly reflector: Reflector,
-    private readonly errorHandler: ErrorHandler,
-  ) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(
     context: ExecutionContext,
@@ -32,9 +33,6 @@ export class UserRoleGuard implements CanActivate {
 
     if (role) return true;
 
-    throw this.errorHandler.handleError({
-      status: 400,
-      message: [`User needs a valid rol: [${validRoles}]`],
-    });
+    throw new UnauthorizedException(`User needs a valid rol: [${validRoles}]`);
   }
 }

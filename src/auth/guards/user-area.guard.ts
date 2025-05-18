@@ -1,15 +1,16 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
-import { ErrorHandler } from '../../error/classes/errorHandler';
 import { META_AREAS } from '../decorators/area-protected.decorator';
 
 @Injectable()
 export class UserAreaGuard implements CanActivate {
-  constructor(
-    private readonly reflector: Reflector,
-    private readonly errorHandler: ErrorHandler,
-  ) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(
     context: ExecutionContext,
@@ -31,9 +32,6 @@ export class UserAreaGuard implements CanActivate {
 
     if (area) return true;
 
-    throw this.errorHandler.handleError({
-      status: 401,
-      message: [`User needs a valid area: [${validAreas}]`],
-    });
+    throw new UnauthorizedException(`User needs a valid area: [${validAreas}]`);
   }
 }

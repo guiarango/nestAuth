@@ -13,12 +13,11 @@ import {
 } from './entities';
 // import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
-import { JwtStrategy } from './strategies/jwt.stategy';
 import { JwtClass } from './classes';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtClass],
+  providers: [AuthService, JwtClass],
   imports: [
     ConfigModule,
     MongooseModule.forFeature([

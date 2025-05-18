@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
@@ -7,7 +13,6 @@ import { ExtractJwt } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ErrorHandler } from '../../error/classes/errorHandler';
 import { RefreshToken } from '../entities';
 import { JwtClass } from '../classes';
 import { Reflector } from '@nestjs/core';
@@ -18,7 +23,7 @@ export class UserAuthGuard implements CanActivate {
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshToken>,
     private readonly configService: ConfigService,
-    private readonly errorHandler: ErrorHandler,
+
     private jwt: JwtClass,
     private readonly reflector: Reflector,
   ) {}
@@ -45,11 +50,9 @@ export class UserAuthGuard implements CanActivate {
     const secret = this.configService.get<string>('JWT_SECRET');
 
     //secret doesn't exist
+
     if (!secret) {
-      throw this.errorHandler.handleError({
-        status: 500,
-        message: ['JWT secret not configured'],
-      });
+      throw new BadRequestException('JWT secret not configured');
     }
 
     try {
@@ -58,14 +61,10 @@ export class UserAuthGuard implements CanActivate {
       const areas = (decoded as { areas: string[] }).areas;
       const isActive = (decoded as { isActive: boolean }).isActive;
       const roles = (decoded as { roles: string[] }).roles;
-      const userDocument = (decoded as { userDocument: string }).userDocument;
 
       //user is not active
       if (!isActive) {
-        throw this.errorHandler.handleError({
-          status: 401,
-          message: ['User is not active '],
-        });
+        throw new UnauthorizedException('JWT secret not configured');
       }
 
       req.user = { areas, roles };
@@ -75,32 +74,25 @@ export class UserAuthGuard implements CanActivate {
       //if token is expired continue with refresh token
     }
 
+    const refreshTokenId = ExtractJwt.fromExtractors([
+      (request: Request) => {
+        return request?.cookies?.refreshTokenId || null;
+      },
+    ])(req);
+
+    //refresh token id does not exist
+    if (!refreshTokenId) {
+      throw new UnauthorizedException('Refresh token not found');
+    }
+
+    const refreshToken = await this.refreshTokenModel.findById(refreshTokenId);
+
+    //refresh token does not exist
+    if (!refreshToken) {
+      throw new UnauthorizedException('refreshToken not found');
+    }
+
     try {
-      const refreshTokenId = ExtractJwt.fromExtractors([
-        (request: Request) => {
-          return request?.cookies?.refreshTokenId || null;
-        },
-      ])(req);
-
-      //refresh token does not exist
-      if (!refreshTokenId) {
-        throw this.errorHandler.handleError({
-          status: 401,
-          message: ['Refresh token not found'],
-        });
-      }
-
-      const refreshToken =
-        await this.refreshTokenModel.findById(refreshTokenId);
-
-      //refresh token does not exist
-      if (!refreshToken) {
-        throw this.errorHandler.handleError({
-          status: 401,
-          message: ['refreshToken not found'],
-        });
-      }
-
       const decodedRefreshToken = jwt.verify(refreshToken.token, secret);
 
       const areas = (decodedRefreshToken as { areas: string[] }).areas;
@@ -111,10 +103,7 @@ export class UserAuthGuard implements CanActivate {
 
       //user is not active
       if (!isActive) {
-        throw this.errorHandler.handleError({
-          status: 401,
-          message: ['User is not active'],
-        });
+        throw new UnauthorizedException('JWT secret not configured');
       }
 
       //Generates the new tokens
@@ -160,10 +149,7 @@ export class UserAuthGuard implements CanActivate {
 
       return true;
     } catch (error) {
-      throw this.errorHandler.handleError({
-        status: 401,
-        message: ['user not authorized'],
-      });
+      throw new UnauthorizedException('user not authorized');
     }
   }
 }
