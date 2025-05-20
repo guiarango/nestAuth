@@ -7,7 +7,6 @@ import { EnvConfiguration } from './config/env.config';
 import { JoiVaildationSchema } from './config/joi.validation';
 import { AuthModule } from './auth/auth.module';
 import { CoreModule } from './core/core.module';
-import { PruebaModule } from './prueba/prueba.module';
 
 @Module({
   imports: [
@@ -22,7 +21,6 @@ import { PruebaModule } from './prueba/prueba.module';
     CoreModule,
     CommonModule,
     AuthModule,
-    PruebaModule,
   ],
   controllers: [],
   providers: [],

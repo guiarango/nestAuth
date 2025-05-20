@@ -61,13 +61,14 @@ export class UserAuthGuard implements CanActivate {
       const areas = (decoded as { areas: string[] }).areas;
       const isActive = (decoded as { isActive: boolean }).isActive;
       const roles = (decoded as { roles: string[] }).roles;
+      const userDocument = (decoded as { userDocument: string }).userDocument;
 
       //user is not active
       if (!isActive) {
         throw new UnauthorizedException('JWT secret not configured');
       }
 
-      req.user = { areas, roles };
+      req.user = { areas, roles, userDocument };
 
       return true;
     } catch (error: any) {
@@ -82,7 +83,7 @@ export class UserAuthGuard implements CanActivate {
 
     //refresh token id does not exist
     if (!refreshTokenId) {
-      throw new UnauthorizedException('Refresh token not found');
+      throw new UnauthorizedException('Refresh token id not found');
     }
 
     const refreshToken = await this.refreshTokenModel.findById(refreshTokenId);
@@ -145,7 +146,7 @@ export class UserAuthGuard implements CanActivate {
         );
       }
 
-      req.user = { areas, roles };
+      req.user = { areas, roles, userDocument };
 
       return true;
     } catch (error) {

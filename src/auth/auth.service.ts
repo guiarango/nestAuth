@@ -10,10 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 
-import {
-  JsonResponse,
-  ResponseInfo,
-} from '../common/interfaces/jsonResponse.interface';
+import { ResponseInfo } from '../common/interfaces/jsonResponse.interface';
 import { JwtClass } from './classes';
 import { CreateUserDto, LoginUserDto } from './dto';
 import { RefreshToken, User } from './entities';
@@ -152,6 +149,31 @@ export class AuthService {
     }
   }
 
+  async returnUserInfo(request: Request) {
+    const userDocument = (request as any).user.userDocument;
+
+    const user = await this.userModel.findOne({ userDocument });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const userData = user.toObject();
+    delete (userData as any).password;
+
+    return {
+      ok: true,
+      data: {
+        userDocument: user.userDocument,
+        name: user.names,
+        lastName: user.lastNames,
+        email: user.email,
+        roles: user.roles,
+        areas: user.areas,
+        isActive: user.isActive,
+      },
+    };
+  }
   async logOutUser(userDocument: string): Promise<ResponseInfo<null>> {
     try {
       await this.refreshTokenModel.deleteMany({ userDocument });

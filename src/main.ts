@@ -2,16 +2,18 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
-// import { SetAuthCookiesInterceptor } from './auth/interceptors/cookie-interceptor';
-// import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  // const configService = app.get(ConfigService);
+  const configService = app.get(ConfigService);
 
   //CORS
-  app.enableCors();
-  app.enableCors({});
+  // app.enableCors();
+  app.enableCors({
+    origin: configService.get('CORS_FRONT'),
+    credentials: true,
+  });
 
   //Global Prefix
   app.setGlobalPrefix('api/v1');

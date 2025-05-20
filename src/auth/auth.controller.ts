@@ -2,15 +2,16 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   Param,
   Post,
+  Req,
   UseInterceptors,
 } from '@nestjs/common';
 
 import { ParseMongoIdPipe } from '../common/pipes/parse-mongo-id.pipe';
 import { AuthService } from './auth.service';
-import { Auth } from './decorators';
 import { Public } from './decorators/public.decorator';
 import { CreateUserDto, LoginUserDto } from './dto';
 import {
@@ -29,6 +30,12 @@ export class AuthController {
   @HttpCode(201)
   createUser(@Body() createAuthDto: CreateUserDto) {
     return this.authService.createUser(createAuthDto);
+  }
+
+  @Get('returnUserInfo')
+  @HttpCode(201)
+  returnUserInfo(@Req() request: Request) {
+    return this.authService.returnUserInfo(request);
   }
 
   // @AreaProtected(ValidAreas.admon)
