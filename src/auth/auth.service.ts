@@ -1,18 +1,21 @@
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 
+import * as jwt from 'jsonwebtoken';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
+import { Request } from 'express';
 
 import { ResponseInfo } from '../common/interfaces/jsonResponse.interface';
 import { JwtClass } from './classes';
-import { CreateUserDto, LoginUserDto } from './dto';
+import { AuthMeDto, CreateUserDto, LoginUserDto } from './dto';
 import { RefreshToken, User } from './entities';
 import { JwtResponse } from './interfaces';
 
@@ -149,34 +152,84 @@ export class AuthService {
     }
   }
 
-  async returnUserInfo(request: Request) {
-    const userDocument = (request as any).user.userDocument;
+  async returnUserInfo(req: Request) {
+    const { token, refreshTokenId } = req.cookies;
+    const reqUser = req as unknown as {
+      user: { userDocument: string; newToken: string; refreshTokenExp: Date };
+    };
+    const { userDocument, newToken, refreshTokenExp } = reqUser.user;
 
-    const user = await this.userModel.findOne({ userDocument });
+    const secret = this.configService.get('JWT_SECRET');
 
-    if (!user) {
-      throw new UnauthorizedException('User not found');
+    if (!secret) {
+      throw new InternalServerErrorException('JWT secret not configured');
     }
 
-    const userData = user.toObject();
-    delete (userData as any).password;
-
-    return {
-      ok: true,
-      data: {
-        userDocument: user.userDocument,
-        name: user.names,
-        lastName: user.lastNames,
-        email: user.email,
-        roles: user.roles,
-        areas: user.areas,
-        isActive: user.isActive,
-      },
-    };
-  }
-  async logOutUser(userDocument: string): Promise<ResponseInfo<null>> {
     try {
-      await this.refreshTokenModel.deleteMany({ userDocument });
+      //Just to continue with the flow
+      if (!token || token === 'undefined') {
+        throw new Error('Token is required');
+      }
+
+      const userData = await this.userModel.findOne({ userDocument });
+
+      if (!userData) throw new Error('User not found');
+
+      const user = userData.toObject();
+      delete (user as any).password;
+
+      return {
+        ok: true,
+        data: {
+          ...user,
+        },
+      };
+    } catch (error) {
+      //If the token is expired, we need to continue with the flow
+    }
+
+    try {
+      const userData = await this.userModel.findOne({ userDocument });
+
+      if (!userData) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      const user = userData.toObject();
+      delete (user as any).password;
+
+      const decoded = jwt.verify(newToken, secret);
+
+      const { exp: tokenExp } = decoded as unknown as {
+        exp: number;
+      };
+
+      return {
+        ok: true,
+        data: {
+          ...user,
+          newToken: {
+            newToken,
+            tokenExp: tokenExp,
+          },
+          newRefreshToken: { refreshTokenId, refreshTokenExp },
+        },
+      };
+    } catch (error) {
+      this.logger.error('Error', error.stack);
+      throw new Error(error);
+    }
+  }
+
+  async validateTokens(req: Request): Promise<ResponseInfo<null>> {
+    return { data: null, ok: true };
+  }
+
+  async logOutUser(req: Request) {
+    const { refreshTokenId } = req.cookies;
+
+    try {
+      await this.refreshTokenModel.deleteMany({ _id: refreshTokenId });
 
       return {
         ok: true,

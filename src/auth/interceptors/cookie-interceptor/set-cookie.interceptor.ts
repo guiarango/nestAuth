@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 
 @Injectable()
 export class SetCookieInterceptor implements NestInterceptor {
@@ -21,10 +21,14 @@ export class SetCookieInterceptor implements NestInterceptor {
       map((info) => {
         const data = info.data;
 
+        const nodeENV = this.configService.get('NODE_ENV');
+
         if (data.token) {
-          response.cookie('token', data.token, {
+          const token = data.token;
+
+          response.cookie('token', token, {
             httpOnly: true,
-            secure: true,
+            secure: nodeENV === 'production' ? true : false,
             sameSite: 'lax',
             maxAge: parseInt(
               this.configService.get('JWT_TOKEN_EXPIRY') || '900000',
@@ -35,8 +39,9 @@ export class SetCookieInterceptor implements NestInterceptor {
         if (data.refreshTokenId) {
           response.cookie('refreshTokenId', data.refreshTokenId, {
             httpOnly: true,
-            secure: true,
+            secure: nodeENV === 'production' ? true : false,
             sameSite: 'lax',
+            path: '/',
             maxAge: parseInt(
               this.configService.get('JWT_REFRESH_TOKEN_EXPIRY') || '86400000',
             ), // 1 days

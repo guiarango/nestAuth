@@ -23,7 +23,6 @@ export class UserAuthGuard implements CanActivate {
     @InjectModel(RefreshToken.name)
     private readonly refreshTokenModel: Model<RefreshToken>,
     private readonly configService: ConfigService,
-
     private jwt: JwtClass,
     private readonly reflector: Reflector,
   ) {}
@@ -39,13 +38,7 @@ export class UserAuthGuard implements CanActivate {
     }
 
     const req = context.switchToHttp().getRequest();
-    const res: Response = context.switchToHttp().getResponse();
-
-    const token = ExtractJwt.fromExtractors([
-      (request: Request) => {
-        return request?.cookies?.token || null;
-      },
-    ])(req);
+    const { token, refreshTokenId } = req.cookies;
 
     const secret = this.configService.get<string>('JWT_SECRET');
 
@@ -55,12 +48,15 @@ export class UserAuthGuard implements CanActivate {
       throw new BadRequestException('JWT secret not configured');
     }
 
+    //refresh token id does not exist
+    if (!refreshTokenId) {
+      throw new UnauthorizedException('Refresh token id not found');
+    }
+
     try {
       const decoded = jwt.verify(token, secret);
 
-      const areas = (decoded as { areas: string[] }).areas;
       const isActive = (decoded as { isActive: boolean }).isActive;
-      const roles = (decoded as { roles: string[] }).roles;
       const userDocument = (decoded as { userDocument: string }).userDocument;
 
       //user is not active
@@ -68,24 +64,14 @@ export class UserAuthGuard implements CanActivate {
         throw new UnauthorizedException('JWT secret not configured');
       }
 
-      req.user = { areas, roles, userDocument };
+      req.user = { userDocument };
 
       return true;
     } catch (error: any) {
       //if token is expired continue with refresh token
     }
 
-    const refreshTokenId = ExtractJwt.fromExtractors([
-      (request: Request) => {
-        return request?.cookies?.refreshTokenId || null;
-      },
-    ])(req);
-
-    //refresh token id does not exist
-    if (!refreshTokenId) {
-      throw new UnauthorizedException('Refresh token id not found');
-    }
-
+    //-----------------Validates the refreshTokenId-----------------
     const refreshToken = await this.refreshTokenModel.findById(refreshTokenId);
 
     //refresh token does not exist
@@ -108,15 +94,13 @@ export class UserAuthGuard implements CanActivate {
       }
 
       //Generates the new tokens
-      const { token, refreshToken: newRefreshToken } = this.jwt.generateTokens({
-        userDocument,
-        roles,
-        areas,
-        isActive,
-      });
-
-      //Sets the new token on locals
-      res.locals.newAccessToken = token;
+      const { token, refreshToken: newRefreshTokenId } =
+        this.jwt.generateTokens({
+          userDocument,
+          roles,
+          areas,
+          isActive,
+        });
 
       const today = new Date();
       const expiresAt = refreshToken.get('expiresAt');
@@ -127,16 +111,18 @@ export class UserAuthGuard implements CanActivate {
       );
 
       //If JWT_TIME_TO_REFRESH_TOKEN has passed, then refreshtokenmodel
+
       if (hoursUntilExpiration <= timeToRefresh) {
+        const refreshTokenExp = new Date(
+          Date.now() +
+            Number(
+              this.configService.get('JWT_REFRESH_TOKEN_EXPIRY') || 86400000,
+            ),
+        );
         const payload = {
           userDocument,
-          token: newRefreshToken,
-          expiresAt: new Date(
-            Date.now() +
-              Number(
-                this.configService.get('JWT_REFRESH_TOKEN_EXPIRY') || 86400000,
-              ),
-          ),
+          token: newRefreshTokenId,
+          expiresAt: refreshTokenExp,
         };
 
         //Creates new refresh token on the db
@@ -144,9 +130,11 @@ export class UserAuthGuard implements CanActivate {
           { _id: refreshTokenId },
           payload,
         );
+        req.user = { userDocument, newToken: token, refreshTokenExp };
+        return true;
       }
 
-      req.user = { areas, roles, userDocument };
+      req.user = { userDocument, newToken: token };
 
       return true;
     } catch (error) {

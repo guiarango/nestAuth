@@ -12,7 +12,6 @@ import {
   UserSchema,
 } from '../auth/entities';
 import { UserAuthGuard } from '../auth/guards';
-import { SetAuthCookiesInterceptor } from '../auth/interceptors/cookie-interceptor';
 // import { ErrorHandler } from '../error/classes/errorHandler';
 import { TransformResponseInterceptor } from '../common/interceptors/transform-response.interceptor';
 import { AllExceptionsFilter } from '../common/filters/error-handler.filter';
@@ -21,7 +20,6 @@ import { AllExceptionsFilter } from '../common/filters/error-handler.filter';
 @Module({
   providers: [
     { provide: APP_GUARD, useClass: UserAuthGuard },
-    { provide: APP_INTERCEPTOR, useClass: SetAuthCookiesInterceptor },
     { provide: APP_INTERCEPTOR, useClass: TransformResponseInterceptor },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     // ErrorHandler,

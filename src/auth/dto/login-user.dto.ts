@@ -1,14 +1,5 @@
 import { Transform } from 'class-transformer';
-import {
-  ArrayMinSize,
-  IsArray,
-  IsEnum,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
-import { ValidAreas, ValidRoles } from '../interfaces';
+import { IsString, MaxLength, MinLength } from 'class-validator';
 
 export class LoginUserDto {
   @IsString({ message: 'La cédula debe ser un string' })
@@ -18,11 +9,5 @@ export class LoginUserDto {
   userDocument: string;
 
   @IsString({ message: 'La clave debe ser un string' })
-  // @MinLength(6, { message: 'La clave debe tener mínimo 6 caracteres' })
-  // @MaxLength(30, { message: 'La clave debe tener máximo 30 caracteres' })
-  // @Matches(/(?:(?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
-  //   message:
-  //     'La clave debe tener una mayuscula, una minuscula, un numero y mínimo 6 caracteres',
-  // })
   password: string;
 }
